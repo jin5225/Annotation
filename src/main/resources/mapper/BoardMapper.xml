@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="edu.mit.annotation.mapper.BoardMapper">
+
+    <!-- tb_post 테이블 전체 컬럼 -->
+    <sql id="postColumns">
+        bno
+        , title
+        , content
+        , writer
+        , view_cnt
+        , created_date
+        , modified_date
+    </sql>
+
+
+    <!-- 게시글 저장 -->
+    <insert id="save" useGeneratedKeys="true" keyProperty="bno">
+        INSERT INTO tb_post (
+        <include refid="postColumns" />
+        ) VALUES (
+        #{bno}
+        , #{title}
+        , #{content}
+        , #{writer}
+        , 0
+        , now()
+        , null
+        )
+    </insert>
+
+
+    <!-- 게시글 상세정보 조회 -->
+    <select id="findById">
+        select bno, title, content, `name` writer ,email, view_cnt, created_date, modified_date
+        from(
+        select *
+        from tb_post where bno = #{bno}) a left join `member` b on (a.writer = b.email)
+    </select>
+
+
+    <!-- 게시글 수정 -->
+    <update id="update">
+        UPDATE tb_post
+        SET
+        modified_date = NOW()
+        , title = #{title}
+        , content = #{content}
+        , writer = #{writer}
+        WHERE
+        bno = #{bno}
+    </update>
+
+
+    <!-- 게시글 삭제 -->
+    <delete id="deleteById">
+        DELETE FROM tb_post
+        WHERE
+        bno = #{bno}
+    </delete>
+
+    <delete id="deleteComment">
+        delete from comment where bno = #{bno}
+    </delete>
+
+
+    <!-- 게시글 리스트 조회 -->
+    <select id="findAll" resultType="edu.mit.annotation.realdto.BoardResponse">
+        select bno, title, content, `name` writer, view_cnt, created_date, modified_date
+        from(
+        select *
+        from tb_post) a left join `member` b on (a.writer = b.email)
+        ORDER BY
+        bno DESC
+    </select>
+
+    <update id="addcount">
+        UPDATE tb_post
+        SET view_cnt = view_cnt + 1
+        WHERE bno = #{bno};
+    </update>
+
+
+    <!--댓글처리-->
+    <insert id="regComment">
+        insert into comment (bno,email,content) values (#{bno},#{email},#{content})
+    </insert>
+
+    <select id="readComment" resultType="edu.mit.annotation.realdto.CommentDTO">
+        select cno, bno, email, name, content, comm_regdate
+        from(
+        select *
+        from comment where bno = #{bno})a join member b using(email)
+    </select>
+</mapper>

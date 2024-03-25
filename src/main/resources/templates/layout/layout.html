@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="setContent(content)">
+<head>
+    <title>nnotation</title>
+    <!-- HTML5 Shim and Respond.js IE11 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 11]>
+    	<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+    	<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    	<![endif]-->
+    <!-- Meta -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="description" content="" />
+    <meta name="keywords" content="">
+    <meta name="author" content="Phoenixcoded" />
+	<meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <!-- Favicon icon -->
+    <link rel="icon" href="/assets/images/favicon.ico" type="image/x-icon">
+
+    <!-- vendor css -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<script src="https://code.jquery.com/jquery-3.7.1.slim.js" integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
+	<style>
+		.input-border-none{
+			border:none;
+			width:100%;
+		}
+		.fc-day-sat { color:#0000FF; }
+		.fc-day-sun { color:#FF0000; }
+		.comment{
+			margin: 3px 3px 3px 3px;
+		}
+		.commentBorder{
+			width: 400px;
+		}
+	</style>
+</head>
+<body class="">
+	<!-- [ Pre-loader ] start -->
+	<div class="loader-bg">
+		<div class="loader-track">
+			<div class="loader-fill"></div>
+		</div>
+	</div>
+	<!-- [ Pre-loader ] End -->
+	<!-- [ navigation menu ] start -->
+	<nav class="pcoded-navbar  ">
+		<div class="navbar-wrapper  ">
+			<div class="navbar-content scroll-div " >
+
+				<ul class="nav pcoded-inner-navbar ">
+					<li class="nav-item pcoded-menu-caption">
+						<label>구매 조달 관리</label>
+					</li>
+					<li class="nav-item">
+						<a href="/main/portal" class="nav-link "><span class="pcoded-micon"><i class="feather icon-home"></i></span><span class="pcoded-mtext">메인포탈</span></a>
+					</li>
+					<li class="nav-item">
+						<a href="/main/main" class="nav-link"><span class="pcoded-micon"><i class="feather icon-layout"></i></span><span class="pcoded-mtext">생산계획</span> </a>
+					</li>
+					<li class="nav-item pcoded-hasmenu">
+						<a href="#!" class="nav-link "><span class="pcoded-micon"><i class="feather icon-layout"></i></span><span class="pcoded-mtext">조달관리</span></a>
+						<ul class="pcoded-submenu">
+							<li><a href="/reg/item" >품목정보등록</a></li>
+							<li><a href="/reg/contract" >계약등록</a></li>
+							<li><a href="/reg/plan" >조달계획등록</a></li>
+						</ul>
+					</li>
+					<li class="nav-item pcoded-hasmenu">
+						<a href="#!" class="nav-link "><span class="pcoded-micon"><i class="feather icon-layout"></i></span><span class="pcoded-mtext">발주관리</span></a>
+						<ul class="pcoded-submenu">
+							<li><a href="/order/pur-order" >구매발주서발행</a></li>
+							<li><a href="/order/progress-check" >진척검수처리</a></li>
+							<li><a href="/order/pur-order-report" >발주진행현황</a></li>
+						</ul>
+					</li>
+					<li class="nav-item pcoded-hasmenu">
+						<a href="#!" class="nav-link "><span class="pcoded-micon"><i class="feather icon-layout"></i></span><span class="pcoded-mtext">자재관리</span></a>
+						<ul class="pcoded-submenu">
+							<li><a href="/inv/receiving" >자재입고</a></li>
+							<li><a href="/inv/statement" >거래명세서발행</a></li>
+							<li><a href="/inv/releasing" >자재출고</a></li>
+							<li><a href="/inv/inv-calc" >재고산출</a></li>
+							<li><a href="/inv/inv-amount" >재고(금액)관리</a></li>
+						</ul>
+					</li>
+					<li class="nav-item pcoded-hasmenu">
+						<a href="#!" class="nav-link "><span class="pcoded-micon"><i class="feather icon-layout"></i></span><span class="pcoded-mtext">문의게시판</span></a>
+						<ul class="pcoded-submenu">
+							<li><a href="/post/list" >Q&A</a></li>
+						</ul>
+					</li>
+					
+				</ul>
+				
+				
+			</div>
+		</div>
+	</nav>
+
+		<!-- [ Header ] start -->
+		<header class="navbar pcoded-header navbar-expand-lg navbar-light header-dark">
+		
+			
+			<div class="m-header">
+				<a class="mobile-menu" id="mobile-collapse" href="#!"><span></span></a>
+				<a href="/main/main" class="b-brand">
+					<!-- ========   change your logo hear   ============ -->
+					<img src="/assets/images/logo-annotaion.png" alt="" class="logo">
+					<img src="/assets/images/logo-icon.png" alt="" class="logo-thumb">
+				</a>
+				<a href="#!" class="mob-toggler">
+					<i class="feather icon-more-vertical"></i>
+				</a>
+			</div>
+			<div class="collapse navbar-collapse">
+				<ul class="navbar-nav ml-auto">
+					<li>
+						<th:block th:text="${session.name} + '님'"></th:block>
+					</li>
+					<li>
+						<form action="/logout" method="post">
+							<button class="btn btn-secondary btn-sm" id="logout">로그아웃</button>
+							<input type="hidden" id="_csrf_token" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+						</form>
+					</li>
+					<li>
+						<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#exampleModalCenter">메일전송</button>
+					</li>
+				</ul>
+			</div>
+			
+		
+</header>
+<div id="exampleModalCenter" class="modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="exampleModalCenterTitle">Email전송</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+			</div>
+			<div class="modal-body">
+				<p>
+					<form id="layoutMailForm" action="#">
+						<div class="form-group">
+							<label for="to">받는사람 </label><br>
+							<input type="email" id="to" class="form-control-sm" required list="mailList"/>
+							<datalist id="mailList">
+								
+							</datalist>
+						</div>
+						<div class="form-group">
+							<label for="subject">제목</label><br>
+							<input type="text" id="subject" class="form-control-sm" />
+						</div>	
+						<div class="custom-file">
+							<input type="file" id="attatch" class="custom-file-input-sm" />
+							<label class="custom-file-label" for="attatch">첨부파일</label><br>
+						</div>
+						<div class="form-group">
+							<label for="mailText">내용</label><br>
+							<textarea class="form-control-sm" id="mailText" rows="5"></textarea>
+						</div>
+					</form>
+					<div id="layoutLoadingSpinner" >
+						<div class="d-flex justify-content-center">
+							<div id="layoutSpinner"  class="spinner-border text-primary" role="status">
+								<span class="sr-only">전송중입니다..</span>
+							</div><br/>
+							
+							<p id="layoutEmailStatus"></p>
+						</div>
+					</div>
+				</p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal" id="close-mail-modal">취소</button>
+				<button type="button" class="btn btn-primary" id="sendMail-modal">전송</button>
+			</div>
+		</div>
+	</div>
+</div>
+	
+<div class="pcoded-main-container">
+	<th:block th:replace = "${content}">
+	</th:block>
+</div>
+
+<script src="/assets/js/vendor-all.min.js"></script>
+<script src="/assets/js/plugins/bootstrap.min.js"></script>
+<script src="/assets/js/pcoded.min.js"></script>
+<script>
+	$(function(){
+		$('#layoutLoadingSpinner').hide();
+	})
+	$('#sendMail-modal').on('click',function(){
+		let to = $('#to').val();
+		let subject = $('#subject').val();
+		let file = $('#attatch')[0].files[0];
+		let message = $('#mailText').val();
+		let header =  $('meta[name="_csrf_header"]').attr("content");
+		let _csrfToken = $('#_csrf_token').val();
+		
+		let formData = new FormData();
+		formData.append('email',to);
+		formData.append('subject',subject);
+		formData.append('file',file);
+		formData.append('message',message);
+		console.log('file',file);
+		$('#layoutMailForm').hide();
+		$('#layoutLoadingSpinner').show();
+		$('#layoutEmailStatus').text('이메일 전송중입니다..');
+		$.ajax({
+			type:'post',
+			url:'/orderapi/send',
+			beforeSend:function(xhr){
+                xhr.setRequestHeader(header,_csrfToken)
+            },
+			processData:false,
+            contentType:false,
+			data:formData,
+			success: function(){
+				$('#layoutMailForm').show();
+				$('#layoutMailForm')[0].reset();
+				$('#layoutLoadingSpinner').hide();
+				console.log("이메일 전송 완료");
+				$('#close-mail-modal').trigger('click');
+			},
+			error:function(a,b,c){
+				console.log("에러");
+				console.log("a",a);
+				console.log("b",b);
+				console.log("c",c);
+				alert('메일 전송중 오류가 발생했습니다.');
+				$('#layoutMailForm').show();
+				$('#layoutLoadingSpinner').hide();
+            }
+		})
+	})
+
+	$('#to').on('keyup', function(){
+		$.ajax({
+			type:'get',
+			url:'/orderapi/search-with-mail',
+			data:{"email":$(this).val()},
+			success: function(res){
+				console.log(res);
+				$('#mailList').empty();
+				res.slice(0,10).forEach(function(data) {
+					let option = $('<option>').text(data.company_name);
+					option.val(data.manager_email);
+					$('#mailList').append(option);
+				});
+			}
+		})
+	});
+
+
+
+	$('#attatch').on('change', function(){
+		let filevalue =  $(this).val().split("\\");
+		let fileName = filevalue[filevalue.length-1];
+		$(this).siblings('label').text(fileName);
+	})
+
+</script>
+</body>
+</th:block>
+</html>

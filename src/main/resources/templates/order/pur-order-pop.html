@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{./layout/layout-pop::setContent(~{::content})}">
+    <th:block th:fragment="content">
+        <!-- [ basic-table ] start -->
+        <div class="card-body table-border-style">
+            <div>
+                <div class="card">
+
+                    <div class="card-header">
+                        <div class="row">
+                            <div class="col">
+                                <h5>▶발주서 작성 </h5>
+                            </div>
+                            <div class="col-md-auto">
+                                <button type="button" class="btn  btn-primary btn-sm" id="saveBtn">저장</button>
+                                <button type="button" class="btn  btn-danger btn-sm" id="cancleBtn">취소</button>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="card-body table-border-style">
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover table-sm" id="order">
+                                <thead>
+                                <tr>
+                                    <th colspan="4">공급자정보</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                               
+                                <tr>
+                                    <th>발주일</th>
+                                    <td th:text="${today}"></td>
+                                    
+                                </tr>
+                                <tr>
+                                    <th>업체명</th>
+                                    <td th:text="${companyInfo.company_name}">(주)그린피앤엘</td>
+                                    <th>사업자번호</th>
+                                    <td th:text="${companyInfo.business_number}">198-81-00081</td>
+                                </tr>
+                                <tr>
+                                    <th>주소</th>
+                                    <td th:text="${companyInfo.company_address}">ㅁㅁㅁㅁ</td>
+                                    <th>담당자</th>
+                                    <td th:text="${companyInfo.manager}">김동석</td>
+                                </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card-body table-border-style">
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover table-sm" id="item">
+                                <thead>
+                                <tr>
+                                    <th colspan="10">품목정보</th>
+                                    <th>
+                                        <button type="button" class="btn btn-danger btn-sm" id="removeBtn">삭제</button>
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <th></th>
+                                    <th width="15px">순번</th>
+                                    <th>품목코드</th>
+                                    <th>품목명</th>
+                                    <th>규격</th>
+                                    <th>재질</th>
+                                    <th >수량</th>
+                                    <th>단가</th>
+                                    <th>공급가격</th>
+                                    <th>입고예정일</th>
+                                    <th>비고</th>
+                                </tr>
+                                <tr th:each="item, itemStat :${itemList}" th:data-prcp="${item.proc_plan_number}" class="prcp">
+                                    <td>
+                                        <label class="check-task custom-control custom-checkbox d-flex justify-content-center done-task">
+                                            <input  type="checkbox" class="custom-control-input">
+                                            <span class="custom-control-label"></span>
+                                        </label>
+                                    </td>
+                                    <td th:text="${itemStat.count}"></td>
+                                    <td class="item_code" th:text="${item.item_code}"></td>
+                                    <td th:text="${item.item_name}"></td>
+                                    <td th:text="${item.width}+'×'+${item.length}+'×'+${item.height}"></td>
+                                    <td th:text="${item.material}"></td>
+                                    <td class="orderCount"><input type="number" th:value="${item.proc_quantity}"></td>
+                                    <td th:text="${item.item_price}"></td>
+                                    <td class="orderPrice"></td>
+                                    <td class="receive_duedate"><input type="date" th:value="${#dates.format(item.proc_duedate, 'yyyy-MM-dd')}"></td>
+                                    <td class="note"><input type="text"></td>
+                                </tr>
+
+                                <tr id="totalPrice">
+                                    <td colspan="7"></td>
+                                    <td>합계</td>
+                                    <td></td>
+                                    <td colspan="2"></td>
+                                </tr>
+                                <tr>
+                                    <td class="align-middle text-center">특이사항</td>
+                                    <td colspan="10"><textarea rows="5" style="resize:none; width:100%; border:none;" id="detail"></textarea></td>
+                                </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            $(document).ready(function() {
+                // 공급가격 합계 계산 및 표시
+                function calculateTotal() {
+                    let total = 0;
+                    $('#item tbody tr').each(function(index) {
+                        if (index > 0 && index !== $('#item tbody tr').length - 2) {
+                            let quantity = $(this).find('input[type="number"]').val();
+                            let unitPrice = $(this).find('td:nth-child(8)').text().replace(',', ''); // 단가 값에서 쉼표 제거
+                            let supplyPrice = 0;
+
+                            if (quantity && unitPrice) {
+                                supplyPrice = parseInt(quantity) * parseInt(unitPrice);
+                                $(this).find('td:nth-child(9)').text(supplyPrice.toLocaleString());
+                                total += supplyPrice;
+                            }
+
+                            // 순번 재설정
+                            $(this).find('.count').text(index);
+                        }
+                    });
+
+                    $('#totalPrice td:nth-child(3)').text(total.toLocaleString());
+                }
+
+                // 페이지 로딩 시 공급가격 합계 계산
+                calculateTotal();
+
+                // 수량이나 단가 입력 시 공급가격 재계산
+                $('#item tbody input[type="number"]').on('input', function() {
+                    calculateTotal();
+                });
+
+                // 삭제 버튼 클릭 시 공급가격 재계산
+                $("#item #removeBtn").on('click', function() {
+                    let checkedItems = $("#item input[type='checkbox']:checked");
+                    if (checkedItems.length === 0) {
+                        alert('체크된 항목이 없습니다.');
+                        return;
+                    }
+                    checkedItems.closest('tr').remove();
+                    calculateTotal(); // 행이 삭제된 후에도 공급가격을 다시 계산
+                });
+            });
+        </script>
+        <script>
+            $(document).ready(function() {
+                // 취소 버튼 클릭 시 팝업 닫기
+                $("#cancleBtn").on('click', function() {
+                    window.close();
+                });
+            });
+        </script>
+        <script>
+            var header = $('meta[name="_csrf_header"]').attr("content");
+            var _csrfToken = $('#_csrf_token').val();
+
+            $(function(){
+                $('#item th').addClass('text-center');
+                $('#item td').addClass('text-center');
+                $('th').addClass('align-middle');
+                $('td').addClass('align-middle');
+            })
+
+            $('#saveBtn').on("click",function(){
+                let data;
+                var dataArr = new Array;
+                $('.prcp').each(function(){
+                    let purch_order_quantity = $(this).children('.orderCount').children().val();
+                    let note = $(this).children('.note').children().val();
+                    let proc_plan_number = $(this).data('prcp');
+                    let receive_duedate = $(this).children('.receive_duedate').children().val();
+                    receive_duedate = new Date(receive_duedate);
+                    data = {purch_order_quantity:purch_order_quantity, note:note, proc_plan_number:proc_plan_number, receive_duedate:receive_duedate};
+                    dataArr.push(data);
+                })
+                let purch_order_detail = $('#detail').val();
+                if(purch_order_detail == ""){
+                    purch_order_detail = "-";
+                }
+                console.log(purch_order_detail)
+                $.ajax({
+                    type:"post",
+                    url:"/orderapi/po-new-order/"+purch_order_detail,
+                    beforeSend:function(xhr){
+                                xhr.setRequestHeader(header,_csrfToken);
+                    },
+                    traditional:true,
+                    contentType: "application/json; charset=UTF-8",
+                    data:JSON.stringify(dataArr),
+                    success:function(res){
+                        console.log(res);
+                        window.close();
+                    },
+                    error:function(a,b,c){
+                        console.log("에러");
+                        console.log("a",a);
+                        console.log("b",b);
+                        console.log("c",c);
+                    }
+                })
+
+            })
+        </script>
+    </th:block>
+</th:block>
+</html>

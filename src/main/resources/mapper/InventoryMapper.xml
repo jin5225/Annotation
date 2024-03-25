@@ -1,0 +1,418 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.mit.annotation.mapper.InventoryMapper">
+
+    <sql id="searchType">
+        <choose>
+            <when test='type=="IC"'>
+                item_code like #{keyword} and
+            </when>
+            <when test='type=="MA"'>
+                material like #{keyword} and
+            </when>
+            <when test='type=="IN"'>
+                item_name like #{keyword} and
+            </when>
+            <when test='type=="PN"'>
+                product_name like #{keyword} and
+            </when>
+            <when test='type=="CN"'>
+                company_name like #{keyword} and
+            </when>
+            <when test='type=="PC"'>
+                proc_plan_number like #{keyword} and
+            </when>
+        </choose>
+    </sql>
+    <sql id="orderType">
+        <choose>
+            <when test='order=="ICA"'>
+                order by length(item_code), item_code
+            </when>
+            <when test='order=="ICD"'>
+                order by length(item_code) desc, item_code desc
+            </when>
+            <when test='order=="INA"'>
+                order by item_name
+            </when>
+            <when test='order=="IND"'>
+                order by item_name desc
+            </when>
+            <when test='order=="IAA"'>
+                order by inv_amount
+            </when>
+            <when test='order=="IAD"'>
+                order by inv_amount desc
+            </when>
+            <when test='order=="PQA"'>
+                order by prime_quantity
+            </when>
+            <when test='order=="PQD"'>
+                order by prime_quantity desc
+            </when>
+            <when test='order=="RCA"'>
+                order by received_in_date
+            </when>
+            <when test='order=="RCD"'>
+                order by received_in_date desc
+            </when>
+            <when test='order=="RLA"'>
+                order by released_in_date
+            </when>
+            <when test='order=="RLD"'>
+                order by released_in_date desc
+            </when>
+            <when test='order=="FQA"'>
+                order by final_quantity
+            </when>
+            <when test='order=="FQD"'>
+                order by final_quantity desc
+            </when>
+        </choose>
+    </sql>
+
+    <sql id="calcSearchType">
+        <choose>
+            <when test='type=="IC"'>
+                item_code like #{keyword}
+            </when>
+            <when test='type=="MA"'>
+                material like #{keyword}
+            </when>
+            <when test='type=="IN"'>
+                item_name like #{keyword}
+            </when>
+        </choose>
+    </sql>
+
+
+
+    <select id="searchReceiveItemList" resultType="edu.mit.annotation.realdto.ReceiveItemDTO">
+        <![CDATA[
+        select SQL_CALC_FOUND_ROWS item_code, item_name, material, proc_duedate, purch_order_quantity, purch_order_date, proc_plan_number
+        from(
+            select item_code, item_name, material, proc_duedate, purch_order_quantity, purch_order_number, aa.proc_plan_number
+            from(
+                select a.item_code item_code, item_name, material, proc_duedate, proc_plan_number
+                from(
+                    select item_code, item_name, material from item) a right join procurement_plan b on (a.item_code = b.item_code)
+                    where b.proc_progress = 0)aa left outer join purchase_order_item bb on (aa.proc_plan_number = bb.proc_plan_number)
+                    )aaa left outer join purchase_order bbb on (aaa.purch_order_number = bbb.purch_order_number)
+                    where
+                    ]]>
+                    <include refid="searchType" />
+                    <![CDATA[ (proc_duedate between date(#{startDate}) and date(#{endDate}))
+                    order by proc_duedate
+                    limit #{pageNum},#{amount}
+                    ]]>
+
+    </select>
+    <select id="getSearchDataCount" resultType="long">
+        select found_rows() data_count
+    </select>
+
+    <select id="getReceiveHistoryBefore" resultType="long">
+        select receive_quantity from receive
+        where proc_plan_number = #{proc_plan_number} and receive_date between date(#{startDate}) and date(#{endDate})+1
+    </select>
+
+    <insert id="saveReceiveItem">
+        insert into receive (receive_quantity, proc_plan_number) values (#{received_quantity}, #{proc_plan_number})
+    </insert>
+
+    <update id="closingProcPlan">
+        update procurement_plan set proc_progress = 1 where proc_plan_number = #{proc_plan_number}
+    </update>
+
+    <insert id="saveClosedProcPlan">
+        insert into closed_proc_plan
+        select proc_plan_number, company_name, business_number, item_code, item_name, purch_order_date, receive_duedate
+        from(
+        select proc_plan_number, item_code, item_name, business_number, company_name, purch_order_number, receive_duedate
+        from(
+        select proc_plan_number, item_code, item_name, business_number, company_name
+        from(
+        select proc_plan_number, item_code, item_name, business_number
+        from(
+        select proc_plan_number, item_code, item_name, contract_number
+        from(
+        select proc_plan_number, item_code, item_name
+        from(
+        select proc_plan_number, item_code
+        from procurement_plan where proc_plan_number = #{proc_plan_number}) a
+        join item b using(item_code)) aa
+        join contract_item bb using(item_code)) aaa
+        join contract bbb using(contract_number)) c
+        join `co-op_company` d using (business_number)) cc
+        join purchase_order_item dd using(proc_plan_number)) ccc
+        join purchase_order ddd using(purch_order_number)
+    </insert>
+
+    <select id="autoReceiveSearch" resultType="edu.mit.annotation.realdto.ReceiveItemDTO">
+        <![CDATA[
+        select item_code, item_name, material
+        from(
+        select item_code, proc_plan_number, proc_duedate
+        from procurement_plan
+        where proc_progress = 0 and proc_duedate between date(#{startDate}) and date(#{endDate}))a left join item b using(item_code)
+        where]]>
+        <include refid="calcSearchType"/>
+    </select>
+
+
+    <select id="getClosedProcPlan" resultType="edu.mit.annotation.realdto.ClosedProcPlanDTO">
+        <![CDATA[
+        select *
+        from closed_proc_plan
+        where  ]]>
+        <include refid="searchType" />
+        <![CDATA[ receive_duedate between date(#{startDate}) and date(#{endDate})
+        order by business_number, receive_duedate limit #{pageNum},#{amount} ]]>
+    </select>
+
+    <select id="autoSearchClosedProcPlan" resultType="edu.mit.annotation.realdto.ClosedProcPlanDTO">
+        <![CDATA[
+        select proc_plan_number, company_name, item_code, item_name
+        from closed_proc_plan
+        where ]]>
+        <include refid="searchType" />
+        <![CDATA[receive_duedate between date(#{startDate}) and date(#{endDate})
+        limit 0, 10 ]]>
+    </select>
+
+    <select id="getCompanyInfo" resultType="edu.mit.annotation.realdto.CompanyInfoDTO">
+        select business_number, company_name, company_address, manager_tel, manager, manager_email
+        from `co-op_company`
+        where business_number = #{business_number}
+    </select>
+
+    <select id="getStatementItems" resultType="edu.mit.annotation.realdto.StatementItemDTO">
+        select item_code, item_name, receive_quantity, item_price,note
+        from(
+        select proc_plan_number, item_code, item_name, receive_quantity, note
+        from(
+        select proc_plan_number, item_code, receive_quantity, note
+        from(
+        select proc_plan_number, item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, item_code
+        from procurement_plan
+        where proc_plan_number in (${proc_plan_number})) a join receive b using (proc_plan_number)
+        group by proc_plan_number) aa join purchase_order_item bb using(proc_plan_number)) aaa join item bbb using (item_code)) c
+        join contract_item d using(item_code);
+    </select>
+
+    <select id="getReleaseList" resultType="edu.mit.annotation.realdto.ReleasingDTO">
+        <![CDATA[
+        select SQL_CALC_FOUND_ROWS item_code, item_name, product_name, prod_start_date, (item_required_quantity*prod_quantity) total_required_quantity, item_quantity
+        from(
+        select item_code, item_name, item_quantity, item_required_quantity, product_code, product_name
+        from(
+        select item_code, item_name, item_quantity, item_required_quantity, product_code
+        from(
+        select item_code, item_name, ifnull(item_quantity,0) item_quantity
+        from(
+        select *
+        from(
+        (select item_code, ifnull(receive_quantity,0)-ifnull(release_quantity,0) item_quantity
+        from(
+        select item_code, sum(ifnull(receive_quantity, 0)) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive
+        group by proc_plan_number) a right join procurement_plan b using (proc_plan_number)
+        group by item_code) aa left join (
+                                            select item_code, sum(ifnull(release_quantity,0)) release_quantity
+                                            from `release`
+                                            group by item_code) bb using (item_code)
+                                            union
+        select item_code, ifnull(receive_quantity,0)-ifnull(release_quantity,0) item_quantity
+        from(
+        select item_code, sum(ifnull(receive_quantity, 0)) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive
+        group by proc_plan_number) a right join procurement_plan b using (proc_plan_number)
+        group by item_code) aa right join (
+                                            select item_code, sum(ifnull(release_quantity,0)) release_quantity
+                                            from `release`
+                                            group by item_code) bb using (item_code)))d) cc right join item dd using(item_code)) ccc
+                                            join composition_item ddd using(item_code)) e join product f using (product_code)) ee
+                                            join production_plan ff using(product_code)
+                                            where ]]>
+                                            <include refid="searchType" />
+        <![CDATA[prod_start_date between date(#{startDate}) and date(#{endDate})
+                                            order by prod_start_date, product_name limit #{pageNum}, #{amount}]]>
+    </select>
+
+    <select id="autoSearchRelease" resultType="edu.mit.annotation.realdto.ReleasingDTO">
+        <![CDATA[
+        select item_code, item_name, product_name
+        from(
+        select item_code, item_name, product_name, product_code
+        from(
+        select item_code, item_name, product_code
+        from(
+        select item_code, item_name
+        from item) a
+        join composition_item b using (item_code)) aa
+        left join product bb using(product_code)) aaa
+        join production_plan bbb using(product_code)
+        where
+        ]]>
+        <include refid="searchType" />
+        <![CDATA[prod_start_date between date(#{startDate}) and date(#{endDate})
+        limit 0, 10]]>
+    </select>
+
+    <insert id="saveReleaseItem">
+        insert into `release` (release_quantity, item_code) values (#{release_quantity},#{item_code})
+    </insert>
+
+    <select id="getInvCalcData" resultType="edu.mit.annotation.realdto.InventoryCalcDTO">
+        <![CDATA[
+        select SQL_CALC_FOUND_ROWS item_code, item_name, width, length, height, material, prime_quantity, received_in_date, released_in_date, final_quantity, ifnull(item_price*final_quantity, -5000) inv_amount
+        from(
+        select item_code, item_name, width, length, height, material, ifnull(prime_quantity,0) prime_quantity, ifnull(receive_quantity,0) received_in_date, ifnull(release_quantity,0) released_in_date,ifnull(prime_quantity,0)+ifnull(receive_quantity,0)-ifnull(release_quantity,0) final_quantity
+        from(
+        (select item_code, ifnull(primary_quantity,0) prime_quantity, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        (select item_code, ifnull(receive_quantity,0)-ifnull(release_quantity,0) primary_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date < date(#{startDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code)aa left join (select item_code, sum(release_quantity) release_quantity
+        from `release` where release_date < date(#{startDate})
+        group by item_code) bb using(item_code))
+        union
+        (select item_code, ifnull(receive_quantity,0)-ifnull(release_quantity,0) primary_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date < date(#{startDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code)aa right join (select item_code, sum(release_quantity) release_quantity
+        from `release` where release_date < date(#{startDate})
+        group by item_code) bb using(item_code))) aaa left join (
+        (select item_code, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date between date(#{startDate}) and date(#{endDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code) a left join (select item_code, sum(release_quantity) release_quantity
+        from `release`  where release_date between date(#{startDate}) and date(#{endDate})
+        group by item_code) b using (item_code))
+        union
+        (select item_code, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date between date(#{startDate}) and date(#{endDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code) a right join (select item_code, sum(release_quantity) release_quantity
+        from `release`  where release_date between date(#{startDate}) and date(#{endDate})
+        group by item_code) b using (item_code))) bbb using (item_code))
+        union
+        (select item_code, ifnull(primary_quantity,0) prime_quantity, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        (select item_code, ifnull(receive_quantity,0)-ifnull(release_quantity,0) primary_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date < date(#{startDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code)aa left join (select item_code, sum(release_quantity) release_quantity
+        from `release` where release_date < date(#{startDate})
+        group by item_code) bb using(item_code))
+        union
+        (select item_code, ifnull(receive_quantity,0)-ifnull(release_quantity,0) primary_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date < date(#{startDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code)aa right join (select item_code, sum(release_quantity) release_quantity
+        from `release` where release_date < date(#{startDate})
+        group by item_code) bb using(item_code))) aaa right join (
+        (select item_code, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date between date(#{startDate}) and date(#{endDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code) a left join (select item_code, sum(release_quantity) release_quantity
+        from `release`  where release_date between date(#{startDate}) and date(#{endDate})
+        group by item_code) b using (item_code))
+        union
+        (select item_code, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive  where receive_date between date(#{startDate}) and date(#{endDate})
+        group by proc_plan_number) a left join procurement_plan b using (proc_plan_number)
+        group by item_code) a right join (select item_code, sum(release_quantity) release_quantity
+        from `release`  where release_date between date(#{startDate}) and date(#{endDate})
+        group by item_code) b using (item_code))) bbb using (item_code))) c right join item d using(item_code)) cc
+        left join contract_item dd using (item_code) where]]>
+        <include refid="calcSearchType" />
+        <include refid="orderType" />
+        <![CDATA[limit #{pageNum}, #{amount}]]>
+    </select>
+
+    <select id="autoSearchInvCalc" resultType="edu.mit.annotation.realdto.InventoryCalcDTO">
+        <![CDATA[
+        select item_code, item_name, material
+        from item
+        where ]]>
+        <include refid="calcSearchType"/>
+        <![CDATA[
+        order by length(item_code), item_code limit 0, 10]]>
+    </select>
+
+    <select id="getInvReport" resultType="edu.mit.annotation.realdto.InventoryReportDTO">
+        select ${type}_name type_name, inv_amount
+        from(
+        select ${type}_code, sum(inv_amount) inv_amount
+        from(
+        select item_code, (final_quantity * ifnull(item_price, 0)) inv_amount, unit_code, part_code, assy_code
+        from(
+        select item_code, ifnull(final_quantity,0) final_quantity, unit_code, part_code, assy_code
+        from(
+        select item_code, receive_quantity-release_quantity final_quantity
+        from(
+        (select item_code, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive where receive_date between date(#{startDate}) and date(#{endDate})
+        group by proc_plan_number)a right join procurement_plan b using (proc_plan_number)
+        group by item_code) aa left join (select item_code, sum(release_quantity) release_quantity
+        from `release` where release_date between date(#{startDate}) and date(#{endDate})
+        group by item_code) bb using (item_code))
+        union
+        (select item_code, ifnull(receive_quantity,0) receive_quantity, ifnull(release_quantity,0) release_quantity
+        from(
+        select item_code, sum(receive_quantity) receive_quantity
+        from(
+        select proc_plan_number, sum(receive_quantity) receive_quantity
+        from receive where receive_date between date(#{startDate}) and date(#{endDate})
+        group by proc_plan_number)a right join procurement_plan b using (proc_plan_number)
+        group by item_code) aa right join (select item_code, sum(release_quantity) release_quantity
+        from `release` where release_date between date(#{startDate}) and date(#{endDate})
+        group by item_code) bb using (item_code)))a) aa right join item bb using(item_code)) aaa left join contract_item bbb using(item_code)) c
+        group by ${type}_code) cc join ${type} dd using(${type}_code)
+        order by length(${type}_name), ${type}_name
+    </select>
+</mapper>

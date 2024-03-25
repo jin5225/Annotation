@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{./layout/layout::setContent(~{::content})}">
+    <th:block th:fragment="content">
+        <div class="pcoded-content">
+            <div class="page-header">
+                <div class="page-block">
+                    <div class="row align-items-center">
+                        <div class="col-md-12">
+                            <div class="page-header-title">
+                                <h5 class="m-b-10">출고 처리</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>출고품목</h5>
+                    </div>
+                    <div class="card-body">
+                        <div>
+                            <span class="badge badge-primary">생산일자 선택</span>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <input type="date" id="sDate" class="form-control-sm" th:value="${defaultStartDate}"> ~
+                                <input type="date" id="eDate" class="form-control-sm" th:value="${defaultEndDate}">
+                                <button class="btn  btn-primary btn-sm" id="dateSearchBtn">조회</button>
+                            </div>
+                            <div class="col-md-auto">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend">
+                                        <form>                                    
+                                            <select id="type" name="category" class="btn btn-primary dropdown-toggle dropdown-toggle-split btn-sm">
+                                                <option value="IC">품목코드</option>
+                                                <option value="IN" >품목명</option>
+                                                <option value="PN">제품명</option>
+                                            </select>
+                                            <input id="searchText" type="text" class="form-control-sm" aria-label="Text input with dropdown button" list="releaseAutoList">
+                                            <datalist id="releaseAutoList">
+
+                                            </datalist>
+                                            <button id="searchBtn" class="btn btn-primary btn-sm"><i class="feather icon-search"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm" style="table-layout: fixed;">
+                                        <thead>
+                                        <tr>
+                                            <th>품목코드</th>
+                                            <th>품목명</th>
+                                            <th>제품명</th>
+                                            <th>생산일자</th>
+                                            <th width="15%">소요량</th>
+                                            <th>재고수량</th>
+                                            <th>출고수량</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="itemsTbody">
+                                       
+                                        </tbody>
+                                    </table>
+                                    <nav aria-label="Page navigation">
+                                        <ul class="pagination justify-content-end" id="searchPageList">
+                                           
+                                        </ul>
+                                    </nav>
+                                </div>
+                            </div>
+                            <div class="col-md-auto">
+                                <button class="btn btn-primary" id="saveBtn">저장</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <script>
+            var result;
+            var crntPage;
+            var amount = 10;
+            var header = $('meta[name="_csrf_header"]').attr("content");
+            var _csrfToken = $('#_csrf_token').val();
+            $(function(){
+                var criteria = {"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":"IC","keyword":"","pageNum":0,"amount":amount};
+                loadList(criteria);
+                makeCenter();
+            })
+
+            $('#searchText').on('keyup', function(){
+                $.ajax({
+                    type:'get',
+                    url:'/invapi/auto-search-release',
+                    data:{"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$(this).val()},
+                    success: function(res){
+                        $('#releaseAutoList').empty();
+                        res.forEach(function(data) {
+                            let option = $('<option>');
+                            if($('#type').val() == 'IC'){
+                                option.val(data.item_code);
+                                option.text(data.item_name);
+                            }else if($('#type').val() == 'PN'){
+                                option.val(data.product_name);
+                                option.text(data.item_name);
+                            }else if($('#type').val() == 'IN'){
+                                option.val(data.item_name);
+                                option.text(data.item_code);
+                            }
+                            $('#releaseAutoList').append(option);
+                        });
+                    }
+                })
+            })
+
+            $('#dateSearchBtn').on("click",function(){
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount})
+            })
+
+            $('#searchBtn').on("click", function(e){
+                e.preventDefault();
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount})
+            })
+
+            $('.pagination').on("click","a", function(){
+                id = $(this).data("paging");
+                if(id == 'next'){
+                    id = parseInt(crntPage/10)+1;
+                    id = id*10+1;
+                }else if(id == 'prev'){
+                    id = parseInt(crntPage/10);
+                    id = id*10;
+                }
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":id-1,"amount":amount});
+            })
+
+          
+
+            $('#itemsTbody').on("click","tr td",function(){
+                console.log("테이블 클릭됨");
+                let reqQuantity = $(this).parent().children('.reqQuantity').text();
+                    if($(this).parent().hasClass('inputOff')){
+                        $(this).parent().addClass('inputOn');
+                        $(this).parent().removeClass('inputOff');
+                        var inputStr = "<input type='number' class='input' value='"+reqQuantity+"' style='width:100%;'>";
+                        $(this).siblings('.releaseCount').html(inputStr);
+                    }else{
+                        $(this).parent().addClass('inputOff');
+                        $(this).parent().removeClass('inputOn');
+                        $(this).siblings('.releaseCount').html("-");
+                    }
+                
+            })
+
+            $('#saveBtn').on("click",function(){
+                var total = $('.inputOn').length;
+                $('.inputOn').each(function(idx,value){
+                    let item_code = $(this).children('.item_code').text();
+                    let release_quantity = $(this).children('.releaseCount').children().val();
+                    if(parseInt($(this).children('.item_quantity').text()) >= release_quantity){
+                        $.ajax({
+                            type:"post",
+                            url:"/invapi/save-release-item/"+item_code+"/"+release_quantity,
+                            context:this,
+                            beforeSend:function(xhr){
+                                xhr.setRequestHeader(header,_csrfToken)
+                            },
+                            success : function(count){
+                                if(count != 1){
+                                    alert("저장 중 오류가 발생하였습니다. 관리자에게 문의해주세요");
+                                    inputFlag = false;
+                                }else{
+                                  
+                                }
+                            }
+                        })
+                    }else{
+                        alert('재고 수량보다 많이 출고 할 수 없습니다.');
+                        return false;
+                    }
+                    if(idx == total-1){
+                        console.log("지금이 마지막이야",idx,total-1);
+                        setTimeout(reload, 150);
+                    }
+                })
+            })
+
+            var reload = function(){
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount});
+            }
+
+            function loadList(criteria){
+                $.ajax({
+                    type:"get",
+                    url:"/invapi/release-get-data",
+                    data:criteria,
+                    success:function(res){
+                        console.log("성공, 데이터확인",res);
+                        $('#itemsTbody').empty();
+                        result = res.dataList;
+                        var rsStr = "";
+                        for(let i = 0; i < result.length; i++){
+                            rsStr += "<tr id ='"+i+"result' class='result inputOff'><td class='item_code'>"+result[i].item_code+"</td><td>"+result[i].item_name+"</td><td>"+result[i].product_name+"</td><td>"+dateFormatter(result[i].prod_start_date)+"</td><td class='reqQuantity'>"+result[i].total_required_quantity+"</td><td class='item_quantity'>"+result[i].item_quantity+"</td><td class='releaseCount'>-</td></tr>";
+                        }
+                        $('#itemsTbody').html(rsStr);
+                        makeCenter();
+                        console.log("전체페이지 수",res.page_count);
+                        var pageList = res.pageList;
+                        var pageStr ="";
+                        for(let j = 0; j < pageList.length; j++){
+                            pageStr +="<li class='page-item'>";
+                            if(pageList[j] == "prev"){
+                                pageStr += "<a class='page-link' data-paging='prev' aria-label='Previous'><span aria-hidden='true'>&laquo;</span><span class='sr-only'>Previous</span></a>";
+                            }else if(pageList[j]=="next"){
+                                pageStr += "<a class='page-link' data-paging='next' aria-label='Next'><span aria-hidden='true'>&raquo;</span><span class='sr-only'>Next</span></a>";
+                            }else{
+                                pageStr += "<a class='page-link' data-paging='"+pageList[j]+"'>"+pageList[j]+"</a>";
+                            }
+                            pageStr +="</li>"
+                        }
+                        $('#searchPageList').html(pageStr);
+                        $('[data-paging ='+res.currentPage+']').parent().addClass("active");
+                        crntPage = criteria.pageNum + 1;
+                        makeCenter();
+                    },
+                    error:function(a,b,c){
+                        console.log("에러");
+                        console.log("a",a);
+                        console.log("b",b);
+                        console.log("c",c);
+                    }
+                })
+            }
+
+            function dateFormatter(date){
+                if(date != null){
+                    var d = new Date(date);
+                    let month = d.getMonth()+1;
+                    let year = d.getFullYear();
+                    let day = d.getDate();
+                    return [year,month,day].join('-');
+                }else{
+                    return "-";
+                }
+            }
+
+            function makeCenter(){
+                $('th').addClass('text-center');
+                $('td').addClass('text-center');
+                $('input').addClass('text-center');
+            }
+
+        </script>
+    </th:block>
+</th:block>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>발주서출력</title>
+    <style>
+        *{
+            font-family:'D2Coding';
+        }
+        body {
+           
+            text-align: center;
+            margin: 20px;
+        }
+        h1 {
+            text-decoration: underline;
+            margin: 20px 0;
+        }
+        h1 u {
+            display: block;
+        }
+        fieldset {
+            width: 90%; /* Widened the outer fieldset */
+            margin: 0 auto; /* Center-align the fieldset */
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        legend {
+            text-align: left;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .total {
+            text-align: right;
+            font-weight: bold;
+        }
+        textarea {
+            width: 100%;
+            resize: vertical;
+        }
+        p {
+            text-align: right;
+            margin-right: 20px;
+        }
+        p.left-align {
+            text-align: left;
+            margin-left: 20px;
+        }
+        /* Added styles for two column layout */
+        .two-columns {
+            display: flex;
+            justify-content: space-between;
+        }
+        .two-columns fieldset {
+            width: 40%;
+            margin: 2px 0;
+        }
+         .buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+        .buttons button {
+            margin-left: 10px;
+            padding: 5px 10px;
+        }
+        .info{
+            width: 50%;
+        }
+        @page{
+            size: 215mm;
+            margin: 0mm;
+        }
+        @media print{
+            .buttons{
+                display:none;
+            }
+            
+            html,body{
+                width: 210mm;
+                height: 297mm;
+                margin: 0mm 0mm 0mm 0mm; 
+            }
+            table { page-break-inside:auto; }
+            tr    { page-break-inside:avoid; page-break-after:auto; }
+            thead { display:table-header-group; }
+            tfoot { display:table-footer-group; } 
+            .two-columns {
+            display: flex;
+            justify-content: space-between;
+            }
+            .two-columns fieldset {
+                width: 40%;
+                margin: 2px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="buttons">
+    <button id="sendBtn">발송</button>
+    <button id="printBtn">인쇄</button>
+</div>
+<fieldset>
+    <h1><u>발   주   서</u></h1>
+    <p th:text="'발행일: '+ ${#dates.format(po_info.purch_order_date,'yyyy-MM-dd')}">발행일:2019-01-19</p>
+
+    <div class="two-columns">
+        <table>
+            <tr>
+                <td class="info">
+                    <h3>수급인</h3>
+                    <p class="left-align">
+                        발주번호: <span id="orderNumber" th:text="${po_info.purch_order_number}">12345</span><br />
+                        업체명: <span id="companyName" th:text="${company_info.company_name}">ABC 주식회사</span><br />
+                        사업자번호: <span id="business_number" th:text="${company_info.business_number}">123-45-67890</span><br />
+                        담당자: <span id="representative" th:text="${company_info.manager}">홍길동</span><br />
+                        주소: <span id="company_address" th:text="${company_info.company_address}">뭐</span><br />
+                        <span>아래와 같이 납품하여 주시기 바랍니다.  </span>
+                    </p>
+                </td>
+                <td class="info">
+                    <h3>발주자</h3>
+                    <p class="left-align">
+                        <span id="ourCompanyName">㈜이노테이션</span><br />
+                        담당자: <span id="ourRepresentative">곽 동 규</span><br />
+                        <span id="ourAddress">수원시 영통구 태장로 01길 33 (해피 프라자) 305호 엠아이티능력개발원  </span><br />
+                        <span id="ourPhoneNumber">☎ 031-000-0000 , FAX 031-273-0000</span><br />
+                    </p>
+                </td>
+            </tr>
+        </table>
+       
+
+        
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>순번</th>
+            <th>품목코드</th>
+            <th>품목명</th>
+            <th>규격</th>
+            <th>재질</th>
+            <th>수량</th>
+            <th>단가</th>
+            <th>비고</th>
+        </tr>
+        </thead>
+        <tbody id="itemTable">
+            <tr th:each="item, itemStat : ${po_items}">
+                <td th:text="${itemStat.count}">1</td>
+                <td th:text="${item.item_code}"></td>
+                <td th:text="${item.item_name}"></td>
+                <td th:text="${item.width} + '×' + ${item.length} + '×' + ${item.height}"></td>
+                <td th:text="${item.material}"></td>
+                <td th:text="${item.purch_order_quantity}"></td>
+                <td th:text="${item.item_price}"></td>
+                <td th:text="${item.note}"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>
+        특이사항:<br />
+        <textarea id="specialNotes" rows="4" cols="50"  style="resize:none;" readonly="readonly" th:text="${po_info.purch_order_detail}"></textarea>
+    </p>
+</fieldset>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<script th:inline="javascript">
+    $('#printBtn').on("click",function(){
+        window.print();
+    })
+
+    $('#sendBtn').on("click",function(){
+        let business_number = [[${bsno}]];
+        let param = [[${pono}]];
+        let email = [[${company_info.manager_email}]];
+        let company_name = [[${company_info.company_name}]];
+        var result = confirm("발주서를 전송하시겠습니까?\n 1부는 저장되며, 1부는 "+company_name+"의 담당자에게 전송됩니다.");
+        if(result){
+            $.ajax({
+                type:'get',
+                url:'/orderapi/save-pdf',
+                data:{"htmlPath":"/templates/order/pur-order-content","sendType":"poContent", "business_number":business_number, "param": param, "etc":"", "email":"jupious@naver.com"},
+                success:function(res){
+                    console.log(res);
+                    alert('전송이 완료되었습니다.');
+                },
+                error:function(a,b,c){
+                    console.log("에러");
+                    console.log("a",a);
+                    console.log("b",b);
+                    console.log("c",c);
+                }
+            })
+        }
+    })
+   
+</script>
+
+</body>
+</html>

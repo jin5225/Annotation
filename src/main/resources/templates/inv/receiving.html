@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{./layout/layout::setContent(~{::content})}">
+    <th:block th:fragment="content">
+        <div class="pcoded-content">
+            <div class="page-header">
+                <div class="page-block">
+                    <div class="row align-items-center">
+                        <div class="col-md-12">
+                            <div class="page-header-title">
+                                <h5 class="m-b-10">입고처리</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xl-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>입고 항목</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th  class="align-middle" width="12%">품목코드</th>
+                                                    <th  class="align-middle" >품목명</th>
+                                                    <th  class="align-middle" width="20%">기입고 수량 / 발주 수량</th>
+                                                    <th width="20%">입고 수량</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="itemsTbody">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-auto">
+                                    <button class="btn  btn-primary" id="saveBtn">저장</button><br/><br/>
+                                    <button class="btn  btn-primary" id="closingBtn">마감</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="col-xl-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>입고 예정 품목</h5>
+                        </div>
+                        <div class="card-body">
+                            <div>
+                                <span class="badge badge-primary">조달납기일 선택</span>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <input type="date" id="sDate" class="form-control-sm" th:value="${defaultStartDate}"> ~
+                                    <input type="date" id="eDate" class="form-control-sm" th:value="${defaultEndDate}">
+                                    <button class="btn  btn-primary btn-sm" id="dateSearchBtn">조회</button>
+                                </div>
+                                <div class="col-md-auto">
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <form>
+                                                <select name="type" id="type" class="btn btn-primary dropdown-toggle dropdown-toggle-split btn-sm">
+                                                    <option value="IC">품목코드</option>
+                                                    <option value="IN" >품목명</option>
+                                                    <option value="MA">재질</option>
+                                                </select>
+                                                <input type="text" class="form-control-sm" id="searchText" aria-label="Text input with dropdown button" list="receiveAutoList">
+                                                <datalist id="receiveAutoList">
+								
+                                                </datalist>
+                                                <button id="searchBtn" class="btn btn-primary btn-sm"><i class="feather icon-search"></i></button>
+                                            </form>
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th class="align-middle" >품목코드</th>
+                                            <th class="align-middle" >품목명</th>
+                                            <th class="align-middle" >재질</th>
+                                            <th class="align-middle" >발주일</th>
+                                            <th class="align-middle" >조달납기</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="poTbody">
+                                        
+                                    </tbody>
+                                </table>
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination justify-content-end" id="searchPageList">
+                                        
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            $(function(){
+                makeCenter();
+            })
+
+        </script>
+        <script th:inline="javascript">
+            var amount = 10;
+            var result;
+            var whoIsUpper = [];
+            var header = $('meta[name="_csrf_header"]').attr("content");
+            var _csrfToken = $('#_csrf_token').val();
+            var crntPage;
+            $(function(){
+                var criteria = {"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":"IC","keyword":"","pageNum":0,"amount":amount};
+                loadList(criteria);
+              
+            })
+
+            $('#searchText').on('keyup', function(){
+                $.ajax({
+                    type:'get',
+                    url:'/invapi/auto-search-receive',
+                    data:{"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$(this).val()},
+                    success: function(res){
+                        $('#receiveAutoList').empty();
+                        res.slice(0,10).forEach(function(data) {
+                            let option = $('<option>');
+                            if($('#type').val() == 'IC'){
+                                option.val(data.item_code);
+                                option.text(data.item_name);
+                            }else if($('#type').val() == 'MA'){
+                                option.val(data.material);
+                                option.text(data.item_code);
+                            }else if($('#type').val() == 'IN'){
+                                option.val(data.item_name);
+                                option.text(data.item_code);
+                            }
+                            $('#receiveAutoList').append(option);
+                        });
+                    }
+                })
+            })
+
+            $('#dateSearchBtn').on("click",function(){
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount})
+            })
+
+            $('#searchBtn').on("click", function(e){
+                e.preventDefault();
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount})
+            })
+
+            $('.pagination').on("click","a", function(){
+                id = $(this).data("paging");
+                if(id == 'next'){
+                    id = parseInt(crntPage/10)+1;
+                    id = id*10+1;
+                }else if(id == 'prev'){
+                    id = parseInt(crntPage/10);
+                    id = id*10;
+                }
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":id-1,"amount":amount})
+            })
+
+            $('#poTbody').on("click","tr",function(){
+                console.log(result)
+                var idx = $(this).data("tr");
+                let itemData = result[idx];
+                if(itemData.purch_order_date !=null){
+                    getReceiveHistory(itemData.proc_plan_number,itemData.purch_order_date,itemData.proc_duedate,itemData,idx);
+                }else{
+                    alert('해당 품목은 미발주 상태입니다.');
+                }
+            })
+
+            $('#itemsTbody').on("click","tr td",function(){
+                let isInput = $(this).find("input[type='number']").length;
+                let proc_plan_number = $(this).parent().attr("content");
+                console.log("행클릭",isInput);
+                if(!isInput){
+                    console.log("여긴없다");
+                    whoIsUpper = whoIsUpper.filter(e => e != proc_plan_number);
+                    $(this).parent().remove();
+                }
+            })
+
+           
+
+            $('#closingBtn').on("click",function(){
+                let conf = confirm("정말 마감 하시겠습니까?");
+                let proc_plan_number;
+                if(conf){
+                    $('.rec-item').each(function(){
+                        proc_plan_number = $(this).attr("content");
+                        $.ajax({
+                            type:"post",
+                            url:"/invapi/close-proc-plan/"+proc_plan_number,
+                            beforeSend:function(xhr){
+                                xhr.setRequestHeader(header,_csrfToken)
+                            },
+                            success:function(c){
+                                console.log("마감완료");
+                                
+                                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount});
+                              
+                            }
+                        })
+                    })
+                    saveReceived();
+                    
+                }
+
+            })
+
+            $('#saveBtn').on("click",function(){
+                saveReceived();
+                
+            })
+
+           
+
+            function saveReceived(){
+                var inputFlag = true;
+                $('.rec-item').each(function(idx,val){
+                    let received_quantity = $(this).children().children('input').val();
+                    if(received_quantity == ""){
+                        received_quantity = 0;
+                    }
+                    let proc_plan_number = $(this).attr('content');
+                    console.log(proc_plan_number,"Aaaaa",received_quantity);
+                    $.ajax({
+                        type:"post",
+                        url:"/invapi/save-received-item/"+proc_plan_number+"/"+received_quantity,
+                        context:this,
+                        beforeSend:function(xhr){
+                            xhr.setRequestHeader(header,_csrfToken)
+                        },
+                        success : function(count){
+                            if(count != 1){
+                                alert("저장 중 오류가 발생하였습니다. 관리자에게 문의해주세요");
+                                inputFlag = false;
+                            }else{
+                                console.log($(this));
+                                whoIsUpper = whoIsUpper.filter(e => e != proc_plan_number);
+                                $(this).remove();
+                            }
+                        }
+                    })
+                })
+            }
+
+            function loadList(criteria){
+                $.ajax({
+                    type:"get",
+                    url:"/invapi/receive-get-data",
+                    data:criteria,
+                    success:function(res){
+                        console.log("성공, 데이터확인",res);
+                        $('#poTbody').empty();
+                        result = res.dataList;
+                        var rsStr = "";
+                        for(let i = 0; i < result.length; i++){
+                            rsStr += "<tr id ='"+i+"result' data-tr='"+i+"' class='result'><td>"+result[i].item_code+"</td><td>"+result[i].item_name+"</td><td>"+result[i].material+"</td><td>"+dateFormatter(result[i].purch_order_date)+"</td><td>"+dateFormatter(result[i].proc_duedate)+"</td></tr>";
+                        }
+                        $('#poTbody').html(rsStr);
+                        $('th').addClass('text-center');
+                        $('td').addClass('text-center');
+                        console.log("전체페이지 수",res.page_count);
+                        var pageList = res.pageList;
+                        var pageStr ="";
+                        for(let j = 0; j < pageList.length; j++){
+                            pageStr +="<li class='page-item'>";
+                            if(pageList[j] == "prev"){
+                                pageStr += "<a class='page-link' data-paging='prev' aria-label='Previous'><span aria-hidden='true'>&laquo;</span><span class='sr-only'>Previous</span></a>";
+                            }else if(pageList[j]=="next"){
+                                pageStr += "<a class='page-link'  data-paging='next' aria-label='Next'><span aria-hidden='true'>&raquo;</span><span class='sr-only'>Next</span></a>";
+                            }else{
+                                pageStr += "<a class='page-link'  data-paging='"+pageList[j]+"'>"+pageList[j]+"</a>";
+                            }
+                            pageStr +="</li>"
+                        }
+                        $('#searchPageList').html(pageStr);
+                        $('[data-paging ='+res.currentPage+']').parent().addClass("active");
+                        crntPage = criteria.pageNum + 1;
+                        makeCenter();
+                    },
+                    error:function(a,b,c){
+                        console.log("에러");
+                        console.log("a",a);
+                        console.log("b",b);
+                        console.log("c",c);
+                    }
+                })
+            }
+
+            function getReceiveHistory(proc_plan_number,startDate,endDate,itemData,idx){
+                $.ajax({
+                    type:"get",
+                    url:"/invapi/receive-history",
+                    data:{
+                        proc_plan_number:proc_plan_number,
+                        startDate:startDate,
+                        endDate:endDate
+                    },
+                    success:function(res){
+                        console.log(res);
+                        if(itemData.purch_order_date != null){
+                            if(!(whoIsUpper.includes(proc_plan_number))){
+                                itemStr = "<tr class='rec-item' content='"+proc_plan_number+"'><td class='code_td'>"+itemData.item_code+"</td><td>"+itemData.item_name+"</td><td>"+res+"/"+itemData.purch_order_quantity+"</td><td onclick='event.cancleBubble=true;'><input type='number' id='"+idx+"receiveCount' ></td></tr>";
+                                $('#itemsTbody').append(itemStr);
+                                whoIsUpper.push(proc_plan_number);
+                            }else{
+                                alert('해당 품목은 이미 추가되어있습니다.');
+                            }
+                        }else{
+                            alert('해당 품목은 미발주 상태입니다.');
+                        }
+                        makeCenter();
+                    },
+                    error:function(a,b,c){
+                        console.log("에러");
+                        console.log("a",a);
+                        console.log("b",b);
+                        console.log("c",c);
+                    }
+                })
+            }
+
+            function dateFormatter(date){
+                if(date != null){
+                    var d = new Date(date);
+                    let month = d.getMonth()+1;
+                    let year = d.getFullYear();
+                    let day = d.getDate();
+                    return [year,month,day].join('-');
+                }else{
+                    return "-";
+                }
+            }
+
+            function makeCenter(){
+                $('th').addClass('text-center');
+                $('td').addClass('text-center');
+            }
+            
+            
+
+
+        </script>
+    </th:block>
+</th:block>
+</html>

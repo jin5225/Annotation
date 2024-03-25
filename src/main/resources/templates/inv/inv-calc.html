@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{./layout/layout::setContent(~{::content})}">
+    <th:block th:fragment="content">
+        <div class="pcoded-content">
+            <div class="page-header">
+                <div class="page-block">
+                    <div class="row align-items-center">
+                        <div class="col-md-12">
+                            <div class="page-header-title">
+                                <h5 class="m-b-10">재고 산출</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>기간별 재고</h5>
+                    </div>
+                    <div class="card-body">
+                        <div>
+                          <span class="badge badge-primary">조회 기간 선택</span>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <input type="date" id="sDate" class="form-control-sm" th:value="${defaultStartDate}"> ~
+                                <input type="date" id="eDate" class="form-control-sm" th:value="${defaultEndDate}">
+                                <button class="btn  btn-primary btn-sm" id="dateTermSearchBtn">조회</button>
+                            </div>
+                            <div class="col-md-auto">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend">
+                                        <form>
+                                            <select id="termType" name="type" class="btn btn-primary dropdown-toggle dropdown-toggle-split btn-sm">
+                                                <option value="IC">품목코드</option>
+                                                <option value="IN">품목명</option>
+                                                <option value="MA">재질</option>
+                                            </select>
+                                            <input id="termSearchText" type="text" class="form-control-sm" aria-label="Text input with dropdown button" list="termAutoList">
+                                            <datalist id="termAutoList">
+
+                                            </datalist>
+                                            <button class="btn btn-primary btn-sm" id="termSearchBtn"><i class="feather icon-search"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead id="monthlyThead">
+                                <tr>
+                                    <th data-order="IC" data-desc="1">품목코드 ▼</th>
+                                    <th data-order="IN" data-desc="1">품목명 ▼</th>
+                                    <th data-order="none">규격</th>
+                                    <th data-order="none">재질</th>
+                                    <th data-order="PQ" data-desc="1">기초 재고 ▼</th>
+                                    <th data-order="RC" data-desc="1">입고수량 ▼</th>
+                                    <th data-order="RL" data-desc="1">출고수량 ▼</th>
+                                    <th data-order="FQ" data-desc="1">기말 재고 ▼</th>
+                                    <th data-order="IA" data-desc="1">재고 금액 ▼</th>
+                                </tr>
+                                </thead>
+                                <tbody id="termCalcTbody">
+                                
+                                </tbody>
+                            </table>
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-end termPage" id="termSearchPageList">
+                                
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>일별 재고</h5>
+                    </div>
+                    <div class="card-body">
+                        <div>
+                            <span class="badge badge-primary">조회 날짜 선택</span>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <input id="date" type="date" class="form-control-sm" th:value="${defaultEndDate}">
+                                <button id="dateSearchBtn" class="btn btn-primary btn-sm">조회</button>
+                            </div>
+                            <div class="col-md-auto">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend">
+                                        <form>
+                                            <select id="type" name="type" class="btn btn-primary dropdown-toggle dropdown-toggle-split btn-sm">
+                                                <option value="IC">품목코드</option>
+                                                <option value="IN">품목명</option>
+                                                <option value="MA">재질</option>
+                                            </select>
+                                            <input id="searchText" type="text" class="form-control-sm" aria-label="Text input with dropdown button" list="dayAutoList">
+                                            <datalist id="dayAutoList">
+
+                                            </datalist>
+                                            <button id="searchBtn" class="btn btn-primary btn-sm"><i class="feather icon-search"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead id="dailyThead">
+                                <tr>
+                                    <th data-order="IC" data-desc="1">품목코드 ▼</th>
+                                    <th data-order="IN" data-desc="1">품목명 ▼</th>
+                                    <th data-order="none">규격</th>
+                                    <th data-order="none">재질</th>
+                                    <th data-order="PQ" data-desc="1">기초 재고 ▼</th>
+                                    <th data-order="RC" data-desc="1">입고수량 ▼</th>
+                                    <th data-order="RL" data-desc="1">출고수량 ▼</th>
+                                    <th data-order="FQ" data-desc="1">기말 재고 ▼</th>
+                                    <th data-order="IA" data-desc="1">재고 금액 ▼</th>
+                                </tr>
+                                </thead>
+                                <tbody id="calcTbody">
+                              
+                                </tbody>
+                            </table>
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-end oneDayPage" id="searchPageList">
+                                
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            var crntPage;
+            var amount = 10;
+            var header = $('meta[name="_csrf_header"]').attr("content");
+            var _csrfToken = $('#_csrf_token').val();
+            var termTbody = $('#termCalcTbody');
+            var calcTbody = $('#calcTbody');
+            var termPaging = $('#termSearchPageList');
+            var paging = $('#searchPageList');
+            var crntTermOrder = "IAD";
+            var crntOrder = "IAD";
+            $(function(){
+                loadList({"startDate":$('#sDate').val(),"endDate":datePlusOne($('#eDate').val()),"type":$('#termType').val(),"keyword":$('#termSearchText').val(),"pageNum":0,"amount":amount, "order":"IAD"},termTbody, termPaging, 1);
+                loadList({"startDate":$('#date').val(),"endDate":datePlusOne($('#date').val()),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount,"order":"IAD"},calcTbody, paging, 0)
+            })
+
+            $('#termSearchText').on('keyup', function(){
+                autoSearchInvCalc($('#termType').val(), $(this).val(), 1);
+            })
+
+            $('#searchText').on('keyup', function(){
+                autoSearchInvCalc($('#type').val(), $(this).val(), 0);
+            })
+
+            function autoSearchInvCalc(type, keyword, flag){
+                $.ajax({
+                    type:'get',
+                    url:'/invapi/auto-search-inv-calc',
+                    data:{"type":type,"keyword":keyword},
+                    success: function(res){
+                        if(flag == 1){
+                            $('#termAutoList').empty();
+                            res.forEach(function(data) {
+                                let option = $('<option>');
+                                if(type == 'IC'){
+                                    option.val(data.item_code);
+                                    option.text(data.item_name);
+                                }else if(type == 'MA'){
+                                    option.val(data.material);
+                                    option.text(data.item_name);
+                                }else if(type == 'IN'){
+                                    option.val(data.item_name);
+                                    option.text(data.item_code);
+                                }
+                                $('#termAutoList').append(option);
+                            });
+                        }else{
+                            $('#dayAutoList').empty();
+                            res.forEach(function(data) {
+                                let option = $('<option>');
+                                if(type == 'IC'){
+                                    option.val(data.item_code);
+                                    option.text(data.item_name);
+                                }else if(type == 'MA'){
+                                    option.val(data.material);
+                                    option.text(data.item_name);
+                                }else if(type == 'IN'){
+                                    option.val(data.item_name);
+                                    option.text(data.item_code);
+                                }
+                                $('#dayAutoList').append(option);
+                            });
+                        }
+                    }
+                })
+            }
+
+            $('#dateTermSearchBtn, #termSearchBtn').on('click', function(e){
+                e.preventDefault();
+                loadList({"startDate":$('#sDate').val(),"endDate":datePlusOne($('#eDate').val()),"type":$('#termType').val(),"keyword":$('#termSearchText').val(),"pageNum":0,"amount":amount, "order":crntTermOrder},termTbody, termPaging, 1);
+            })
+
+            $('#dateSearchBtn, #searchBtn').on('click',function(e){
+                e.preventDefault();
+                loadList({"startDate":$('#date').val(),"endDate":datePlusOne($('#date').val()),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount, "order":crntOrder},calcTbody, paging, 0)
+            })
+
+            $('#monthlyThead').on('click','tr th', function(){
+                console.log("정렬 구현할거임", $(this).data('order'));
+                let order;
+                if($(this).data('order') != "none"){
+                    if($(this).data("desc") == 1){
+                        order = $(this).data('order') + "A";
+                        $(this).data("desc", 0);
+                        $(this).text($(this).text().replace("▼","▲"));
+                        crntTermOrder = order;
+                    }else{
+                        order = $(this).data('order') + "D";
+                        $(this).data("desc", 1);
+                        $(this).text($(this).text().replace("▲", "▼"));
+                        crntTermOrder = order;
+                    }
+                }
+                loadList({"startDate":$('#sDate').val(),"endDate":datePlusOne($('#eDate').val()),"type":$('#termType').val(),"keyword":$('#termSearchText').val(),"pageNum":0,"amount":amount, "order":order},termTbody, termPaging, 1);
+            })
+
+            $('#dailyThead').on('click','tr th', function(){
+                console.log("정렬 구현할거임", $(this).data('order'));
+                let order;
+                if($(this).data('order') != "none"){
+                    if($(this).data("desc") == 1){
+                        order = $(this).data('order') + "A";
+                        $(this).data("desc", 0);
+                        $(this).text($(this).text().replace("▼","▲"));
+                        crntOrder = order;
+                    }else{
+                        order = $(this).data('order') + "D";
+                        $(this).data("desc", 1);
+                        $(this).text($(this).text().replace("▲", "▼"));
+                        crntOrder = order;
+                    }
+                }
+                loadList({"startDate":$('#date').val(),"endDate":datePlusOne($('#date').val()),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount,"order":order},calcTbody, paging, 0);
+            })
+
+            $('.termPage').on("click","a", function(){
+                id = $(this).data("paging");
+                if(id == 'next'){
+                    id = parseInt(crntPage/10)+1;
+                    id = id*10+1;
+                }else if(id == 'prev'){
+                    id = parseInt(crntPage/10);
+                    id = id*10;
+                }
+                loadList({"startDate":$('#sDate').val(),"endDate":datePlusOne($('#eDate').val()),"type":$('#termType').val(),"keyword":$('#termSearchText').val(),"pageNum":id-1,"amount":amount, "order":crntTermOrder},termTbody,termPaging, 1);
+            })
+
+            $('.oneDayPage').on("click","a", function(){
+                id = $(this).data("paging");
+                if(id == 'next'){
+                    id = parseInt(crntPage/10)+1;
+                    id = id*10+1;
+                }else if(id == 'prev'){
+                    id = parseInt(crntPage/10);
+                    id = id*10;
+                }
+                loadList({"startDate":$('#date').val(),"endDate":datePlusOne($('#date').val()),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":id-1,"amount":amount, "order":crntOrder},calcTbody,paging, 0)
+            })
+
+            function loadList(criteria, tbody, pagingTag, flag){
+                $.ajax({
+                    type:"get",
+                    url:"/invapi/inv-calc",
+                    data:criteria,
+                    success:function(res){
+                        console.log("성공, 데이터확인",res);
+                        tbody.empty();
+                        result = res.dataList;
+                        var rsStr = "";
+                        for(let i = 0; i < result.length; i++){
+                            let inv_amount = result[i].inv_amount;
+                            if(inv_amount == -5000){
+                                inv_amount = "-"
+                            }
+                            rsStr += "<tr id ='"+i+"result'><td>"+result[i].item_code+"</td><td>"+result[i].item_name+"</td><td>"+result[i].width+"×"+result[i].length+"×"+result[i].height+"</td><td>"+result[i].material+"</td><td>"+result[i].prime_quantity+"</td><td>"+result[i].received_in_date+"</td><td>"+result[i].released_in_date+"</td><td>"+result[i].final_quantity+"</td><td>"+inv_amount+"</td></tr>";
+                        }
+                        tbody.html(rsStr);
+                        makeCenter();
+                        console.log("전체페이지 수",res.page_count);
+                        var pageList = res.pageList;
+                        var pageStr ="";
+                        for(let j = 0; j < pageList.length; j++){
+                            pageStr +="<li class='page-item'>";
+                            if(pageList[j] == "prev"){
+                                pageStr += "<a class='page-link' data-type='"+flag+"' data-paging='prev' aria-label='Previous'><span aria-hidden='true'>&laquo;</span><span class='sr-only'>Previous</span></a>";
+                            }else if(pageList[j]=="next"){
+                                pageStr += "<a class='page-link' data-type='"+flag+"' data-paging='next' aria-label='Next'><span aria-hidden='true'>&raquo;</span><span class='sr-only'>Next</span></a>";
+                            }else{
+                                pageStr += "<a class='page-link' data-type='"+flag+"' data-paging='"+pageList[j]+"'>"+pageList[j]+"</a>";
+                            }
+                            pageStr +="</li>"
+                        }
+                        
+                        pagingTag.html(pageStr);
+                        $('[data-type='+flag+'][data-paging ='+res.currentPage+']').parent().addClass("active");
+                        crntPage = criteria.pageNum + 1;
+                        makeCenter();
+                    },
+                    error:function(a,b,c){
+                        console.log("에러");
+                        console.log("a",a);
+                        console.log("b",b);
+                        console.log("c",c);
+                    }
+                })
+            }
+
+
+            function makeCenter(){
+                $('th').addClass('text-center');
+                $('td').addClass('text-center');
+                $('input').addClass('text-center');
+            }
+
+            
+            function datePlusOne(date){
+                let parseDate = new Date(date);
+                parseDate.setDate(parseDate.getDate())
+                return parseDate.getFullYear()+"-"+(parseDate.getMonth()+1)+"-"+parseDate.getDate();
+            }
+        </script>
+    </th:block>
+</th:block>
+</html>

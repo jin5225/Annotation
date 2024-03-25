@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.mit.annotation.mapper.OrderMapper">
+    <sql id="searchType">
+        <choose>
+            <when test='type=="IC"'>
+                item_code like #{keyword} and
+            </when>
+            <when test='type=="MA"'>
+                material like #{keyword} and
+            </when>
+            <when test='type=="IN"'>
+                item_name like #{keyword} and
+            </when>
+            <when test='type=="PN"'>
+                product_name like #{keyword} and
+            </when>
+            <when test='type=="CN"'>
+                company_name like #{keyword} and
+            </when>
+            <when test='type=="OC"'>
+                purch_order_numbber like #{keyword} and
+            </when>
+        </choose>
+    </sql>
+    <sql id="searchTypeNoAnd">
+        <choose>
+            <when test='type=="IC"'>
+                item_code like #{keyword}
+            </when>
+            <when test='type=="MA"'>
+                material like #{keyword}
+            </when>
+            <when test='type=="IN"'>
+                item_name like #{keyword}
+            </when>
+            <when test='type=="PN"'>
+                product_name like #{keyword}
+            </when>
+            <when test='type=="CN"'>
+                company_name like #{keyword}
+            </when>
+            <when test='type=="OC"'>
+                purch_order_numbber like #{keyword}
+            </when>
+            <when test='type=="INS"'>
+                item_names like #{keyword}
+            </when>
+        </choose>
+    </sql>
+    <sql id="lowerAuto">
+        <choose>
+            <when test='type=="CN"'>
+                company_name like #{keyword}
+            </when>
+            <when test='type=="IN"'>
+                item_names like #{keyword}
+            </when>
+        </choose>
+    </sql>
+
+    <sql id="list1_Criteria">
+
+            <choose>
+                <when test='type=="PON"'>
+                    and purch_order_number like '%${keyword}%'
+                </when>
+                <when test='type=="IC"'>
+                    and item_code like '%${keyword}%'
+                </when>
+                <when test='type=="IN"'>
+                    and item_name like '%${keyword}%'
+                </when>
+            </choose>
+
+    </sql>
+
+
+    <select id="getProcPlanList" resultType="edu.mit.annotation.realdto.ProcPlanNoPO">
+        <![CDATA[
+        select SQL_CALC_FOUND_ROWS proc_plan_number, company_name, item_name, proc_duedate, business_number
+        from(
+        select proc_plan_number, item_name, proc_duedate, contract_number, business_number
+        from(
+        select proc_plan_number, item_name, proc_duedate, contract_number
+        from(
+        select item_code, item_name, proc_duedate, proc_plan_number
+        from(
+        select proc_plan_number, item_code, proc_duedate
+        from procurement_plan
+        where proc_plan_number not in (select proc_plan_number from purchase_order_item)) a left join item b using (item_code)) aa left join contract_item bb
+        using (item_code)) aaa left join contract bbb using (contract_number)) c left join `co-op_company` using (business_number)
+        where]]>
+        <include refid="searchType" />
+        <![CDATA[
+        proc_duedate between date(#{startDate}) and date(#{endDate})
+        order by company_name, proc_duedate ]]>
+    </select>
+
+    <select id="autoSearchPrcp" resultType="edu.mit.annotation.realdto.ProcPlanNoPO">
+        <![CDATA[
+        select item_name, company_name
+        from(
+        select item_name, business_number
+        from(
+        select item_name, contract_number
+        from(
+        select item_code, item_name
+        from(
+        select item_code
+        from procurement_plan
+        where proc_duedate between date(#{startDate}) and date(#{endDate}) and proc_plan_number not in (
+        select proc_plan_number
+        from purchase_order_item)) a
+        join item b using(item_code)) aa
+        join contract_item bb using(item_code)) aaa
+        join contract bbb using(contract_number)) c
+        join `co-op_company` d using(business_number)
+        where ]]>
+        <include refid="searchTypeNoAnd"/>
+        <![CDATA[limit 0, 10]]>
+    </select>
+
+    <select id="getSearchDataCount" resultType="long">
+        select found_rows() data_count
+    </select>
+
+    <select id="getCompanyInfo" resultType="edu.mit.annotation.realdto.CompanyInfoDTO">
+        select company_name, business_number, manager, company_address, manager_email
+        from `co-op_company`
+        where business_number = #{business_number}
+    </select>
+
+    <select id="getPurchOrderItemList" resultType="edu.mit.annotation.realdto.PurchOrderItemsDTO">
+        select item_code, item_name, width, length, height, material, proc_quantity, item_price, proc_duedate, proc_plan_number
+        from(
+        select item_code, item_name, width, length, height, material, proc_quantity, proc_duedate, proc_plan_number
+        from(
+        select item_code, proc_quantity, proc_duedate, proc_plan_number
+        from procurement_plan
+        where proc_plan_number in (${prcpNumbers})) a left join item b using (item_code)) aa
+        left join contract_item bb using (item_code)
+        order by length(item_code), item_code
+    </select>
+
+    <select id="getLatestPurchOrderNumber" resultType="string">
+        select purch_order_number
+        from purchase_order
+        order by length(purch_order_number) desc, purch_order_number desc limit 0,1
+    </select>
+
+    <insert id="savePurchaseOrder">
+        insert into purchase_order (purch_order_number, purch_order_date, purch_order_detail)
+        values (#{purch_order_number}, date(#{purch_order_date}), #{purch_order_detail})
+    </insert>
+
+    <insert id="savePurchaseOrderItem">
+        insert into purchase_order_item values (#{purch_order_quantity}, #{note}, #{purch_order_number}, #{proc_plan_number}, #{receive_duedate})
+    </insert>
+
+    <select id="getPoList" resultType="edu.mit.annotation.realdto.PublishedPurchaseOrderDTO">
+        <![CDATA[
+        select SQL_CALC_FOUND_ROWS purch_order_number, group_concat(item_name SEPARATOR '!@#') item_names, company_name, purch_order_date, business_number
+        from(
+        select purch_order_number, item_name, business_number, purch_order_date
+        from(
+        select purch_order_number, item_name, contract_number, purch_order_date
+        from(
+        select purch_order_number, item_code, item_name, purch_order_date
+        from(
+        select purch_order_number, item_code, purch_order_date
+        from(
+        select purch_order_number, proc_plan_number, purch_order_date
+        from(
+        select purch_order_number, purch_order_date
+        from purchase_order) a left join purchase_order_item b using (purch_order_number)) aa left join procurement_plan bb using(proc_plan_number)) aaa
+        left join item using(item_code)) c join contract_item d using(item_code)) cc join contract dd using(contract_number)) ccc join `co-op_company` ddd
+        using(business_number) where]]>
+        <include refid="searchType" />
+        <![CDATA[
+        purch_order_date between date(#{startDate}) and date(#{endDate})
+        group by purch_order_number, company_name, purch_order_date, business_number
+        order by purch_order_date limit #{pageNum},#{amount}]]>
+    </select>
+
+    <select id="autoSearchPOList" resultType="edu.mit.annotation.realdto.PublishedPurchaseOrderDTO">
+        <![CDATA[
+        select company_name, item_names
+        from(
+        select purch_order_number, group_concat(item_name) item_names, business_number
+        from(
+        select purch_order_number, item_name, contract_number
+        from(
+        select purch_order_number, item_name, item_code
+        from(
+        select purch_order_number, item_code
+        from(
+        select proc_plan_number, purch_order_number
+        from(
+        select purch_order_number
+        from purchase_order where purch_order_date between date(#{startDate}) and date(#{endDate}))a
+        join purchase_order_item using (purch_order_number))aa
+        join procurement_plan bb using(proc_plan_number))aaa
+        join item bbb using(item_code)) c
+        join contract_item d using(item_code))cc
+        join contract dd using(contract_number)
+        group by purch_order_number,business_number) ccc
+        join `co-op_company` ddd using (business_number)
+        where ]]>
+        <include refid="lowerAuto"/>
+        <![CDATA[limit 0,10]]>
+    </select>
+    
+    <delete id="deletePurchaseOrderItem">
+        delete from purchase_order_item where purch_order_number = #{purch_order_number}
+    </delete>
+    <delete id="deletePurchaseOrder">
+        delete from purchase_order where purch_order_number = #{purch_order_number}
+    </delete>
+
+    <select id="getPOitems" resultType="edu.mit.annotation.realdto.PublishedPOItemDTO">
+        select item_code, item_name, width, length, height, material, purch_order_quantity, item_price, note
+        from(
+        select item_code, item_name, width, length, height, material, purch_order_quantity, note
+        from(
+        select item_code, purch_order_quantity, note
+        from(
+        select purch_order_quantity, note, proc_plan_number
+        from purchase_order_item
+        where purch_order_number = #{purch_order_number}) a join procurement_plan b using(proc_plan_number)) aa join item bb using(item_code)) aaa join contract_item bbb using(item_code)
+    </select>
+
+    <select id="getPOInfo" resultType="edu.mit.annotation.realdto.PublishedPODTO">
+        select *
+        from purchase_order
+        where purch_order_number = #{purch_order_number}
+    </select>
+
+    <select id="getCompInfoWithEmail" resultType="edu.mit.annotation.realdto.CompanyInfoDTO">
+        select company_name, manager, manager_email
+        from `co-op_company`
+        where manager_email like #{email}
+    </select>
+
+    <select id="isPrcpClosed" resultType="int">
+        select sum(proc_progress) is_closed
+        from(
+        select proc_plan_number, purch_order_number
+        from purchase_order_item where purch_order_number = #{purch_order_number})a left join procurement_plan b using(proc_plan_number)
+        group by purch_order_number
+    </select>
+
+
+    <select id="getAutoProcPlan" resultType="edu.mit.annotation.realdto.AutoProgPlanAlertDTO">
+        select purch_order_number, proc_check_date, item_code, purch_order_quantity, item_name, business_number, company_name, company_address, manager, manager_tel, proc_check_order
+        from(
+        select purch_order_number, proc_check_date, item_code, purch_order_quantity, item_name, business_number, proc_check_order
+        from(
+        select purch_order_number, proc_check_date, item_code, purch_order_quantity, item_name, contract_number, proc_check_order
+        from(
+        select purch_order_number, proc_check_date, item_code, purch_order_quantity, item_name, proc_check_order
+        from(
+        select purch_order_number, proc_check_date, item_code, purch_order_quantity, proc_check_order
+        from(
+        select purch_order_number, proc_check_date, item_code, proc_plan_number, proc_check_order
+        from(
+        select purch_order_number, proc_plan_number, proc_check_date, proc_check_order
+        from progress_check_item
+        where prog_check_result = '검수전' and proc_check_date between date(#{startDate}) and date(#{endDate}))a
+        join procurement_plan b using(proc_plan_number)) aa
+        join purchase_order_item bb using(purch_order_number , proc_plan_number)) aaa
+        join item bbb using(item_code))c
+        join contract_item d using(item_code)) cc
+        join contract dd using(contract_number)) ccc
+        join `co-op_company` ddd using(business_number)
+    </select>
+
+    <select id="getListforTable1" resultType="edu.mit.annotation.testdto.PurchaseOrderListDTO">
+        <![CDATA[
+    select purch_order_number, purch_order_date, receive_duedate, item_code, item_name, purch_order_quantity, prog_check_total, prog_check_results, proc_plan_number, prog_check_count
+FROM(
+	select purch_order_number, purch_order_date, receive_duedate, item_code, purch_order_quantity, prog_check_total, prog_check_results, proc_plan_number, prog_check_count
+	FROM(
+		select purch_order_number, purch_order_date, receive_duedate, purch_order_quantity, proc_plan_number, count(proc_check_order) prog_check_total,COUNT(case when prog_check_result<>'검수전' then 1 END) as prog_check_count, ifnull(group_concat(prog_check_result SEPARATOR '!@#'), '-') prog_check_results
+		from(
+			select aa.purch_order_number, purch_order_date, receive_duedate, purch_order_quantity, proc_plan_number, proc_check_order, prog_check_result
+			from(
+				select purch_order_number, purch_order_date, receive_duedate, purch_order_quantity, proc_plan_number
+				from(
+					select purch_order_number, purch_order_date
+					from purchase_order) a join purchase_order_item b using (purch_order_number))aa left join progress_check_item bb using(proc_plan_number)) aaa
+		GROUP by proc_plan_number, purch_order_date, purch_order_number, receive_duedate) c join procurement_plan d using (proc_plan_number)) cc
+	join item dd using(item_code)
+	where purch_order_date between #{startDate} and #{endDate}
+        ]]><include refid="list1_Criteria"></include>
+        order by prog_check_count ASC, LENGTH(purch_order_number), purch_order_number
+        limit #{amount} offset #{offset}
+    </select>
+
+
+
+    <insert id="saveProgressCheck">
+        INSERT INTO progress_check_item(purch_order_number,proc_plan_number,proc_check_order,proc_check_date)
+        VALUES(#{purch_order_number},#{proc_plan_number},#{proc_check_order},#{proc_check_date});
+    </insert>
+
+    <select id="getListforProgressCheck" resultType="edu.mit.annotation.testdto.ProgressCheckDTO">
+        SELECT proc_check_order, DATE_FORMAT(proc_check_date, '%Y-%m-%d') AS proc_check_date,
+        prog_check_result, completed_quantity, supplementation, ROUND(((completed_quantity)/(purch_order_quantity)*100)) AS percent
+        FROM progress_check_item AS pci
+        JOIN purchase_order_item AS poi USING(proc_plan_number, purch_order_number)
+        WHERE purch_order_number = #{purch_order_number} and proc_plan_number = #{proc_plan_number}
+    </select>
+
+    <select id="inspectCheckPlans" resultType="int">
+        SELECT count(purch_order_number)
+        FROM progress_check_item
+        WHERE purch_order_number = #{purch_order_number}
+    </select>
+
+    <select id="getCountListPurOrder" resultType="int">
+        SELECT found_rows()
+    </select>
+
+    <update id="updateProgressCheck">
+        UPDATE
+        progress_check_item AS pci
+        SET
+        pci.prog_check_result = #{prog_check_result},
+        pci.supplementation = #{supplementation},
+        pci.completed_quantity = #{completed_quantity}
+        WHERE
+        pci.purch_order_number = #{purch_order_number} and
+        pci.proc_plan_number =  #{proc_plan_number} and
+        pci.proc_check_order = #{proc_check_order} and
+        pci.proc_check_date = #{proc_check_date};
+    </update>
+
+    <select id="getCompany" resultType="edu.mit.annotation.testdto.getCompanyDTO">
+        SELECT company_name, business_number, proc_plan_number, purch_order_number
+        FROM (
+        SELECT company_name, business_number, proc_plan_number
+        FROM (
+        SELECT DISTINCT company_name, business_number, item_code
+        FROM (
+        SELECT company_name, business_number, contract_number
+        FROM `co-op_company`
+        JOIN contract USING(business_number))a
+        JOIN contract_item USING (contract_number))b
+        JOIN procurement_plan USING(item_code))c
+        JOIN purchase_order_item USING(proc_plan_number)
+
+        WHERE proc_plan_number = #{proc_plan_number}
+    </select>
+
+    <select id="checkPlanDB" resultType="int">
+        select count(proc_check_order)
+        from progress_check_item
+        where proc_plan_number = #{proc_plan_number}
+    </select>
+
+    <select id="getListPurOrder" resultType="edu.mit.annotation.testdto.PurchaseOrderListDTO">
+        SELECT purch_order_date, receive_duedate, purch_order_number, purch_order_quantity, purch_order_detail, note
+        FROM purchase_order
+        JOIN purchase_order_item USING(purch_order_number)
+        ORDER BY purch_order_date, purch_order_number asc
+    </select>
+
+    <select id="getTotalPurOrder" resultType="int">
+        select count(purch_order_number)
+        from purchase_order
+    </select>
+
+    <select id="getCountProcPlan" resultType="int">
+        SELECT
+        count(*)
+        FROM
+        procurement_plan
+        where procurement_plan.proc_regist_date BETWEEN #{startDate} and #{endDate}
+    </select>
+
+    <select id="getCountPublishedPurOrder" resultType="int">
+        SELECT
+        count(*)
+        FROM
+        purchase_order
+        where purch_order_date between #{startDate} and #{endDate}
+    </select>
+
+    <select id="getCountProgCheckingProcPlan" resultType="int">
+        SELECT
+        count(DISTINCT proc_plan_number)
+        FROM
+        progress_check_item
+        where
+        progress_check_item.proc_check_date>#{endDate}
+    </select>
+
+    <select id="getCountFinishedProcPlan" resultType="int">
+        SELECT
+        COUNT(proc_plan_number)
+        FROM
+        procurement_plan
+        WHERE
+        proc_progress = '1'
+        and proc_regist_date between #{startDate} and #{endDate}
+    </select>
+</mapper>

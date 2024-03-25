@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{./layout/layout::setContent(~{::content})}">
+    <th:block th:fragment="content">
+        <div class="pcoded-content">
+            <div class="page-header">
+                <div class="page-block">
+                    <div class="row align-items-center">
+                        <div class="col-md-12">
+                            <div class="page-header-title">
+                                <h5 class="m-b-10">거래명세서 발행</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="row">
+                            <div class="col">
+                                <h5>입고완료 품목 목록</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div>
+                            <span class="badge badge-primary">입고예정일 선택</span>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <input type="date" id="sDate" class="form-control-sm" th:value="${defaultStartDate}"> ~
+                                <input type="date" id="eDate" class="form-control-sm" th:value="${defaultEndDate}">
+                                <button class="btn  btn-primary btn-sm" id="dateSearchBtn">조회</button>
+                            </div>
+                            <div class="col-md-auto">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend">
+                                        <form>
+                                            <select id="type" name="category" class="btn btn-primary dropdown-toggle dropdown-toggle-split btn-sm">
+                                                <option value="PC">조달번호</option>
+                                                <option value="IC">품목코드</option>
+                                                <option value="IN">품목명</option>
+                                                <option value="CN">업체명</option>
+                                            </select>
+                                            <input type="text" class="form-control-sm" id="searchText" aria-label="Text input with dropdown button" list="statementAutoList">
+                                            <datalist id="statementAutoList">
+								
+                                            </datalist>
+                                            <button class="btn btn-primary btn-sm" id="searchBtn"><i class="feather icon-search"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col"></div>
+                            <div class="col-md-auto">
+                                <button class='btn  btn-secondary btn-sm print' id='printBtn'>발행</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover table-sm">
+                                <thead>
+                                <tr>
+                                    <th><div class='custom-control custom-checkbox'><input type='checkbox' id="selectAll" class='custom-control-input'> <label class='custom-control-label' for='selectAll' id="label-selectAll"></label></div></th>
+                                    <th class="align-middle" >조달번호</th>
+                                    <th class="align-middle" >업체명</th>
+                                    <th class="align-middle" >품목코드</th>
+                                    <th class="align-middle" >품목명</th>
+                                    <th class="align-middle" >발주일</th>
+                                    <th class="align-middle" >입고예정일</th>
+                                </tr>
+                                </thead>
+                                <tbody id = "poTbody">
+                                </tbody>
+                            </table>
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-end" id="searchPageList">
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+       
+        <script>
+            var amount = 200;
+            var header = $('meta[name="_csrf_header"]').attr("content");
+            var _csrfToken = $('#_csrf_token').val();
+            var crntPage;
+            var prcNumberArr = [];
+            var bsNumArr = [];
+
+            //명세서발행 자동완성은 쿼리최적화를 해도 조인이 너무 많아서 전용테이블을 추가로 생성해서 처리함
+
+
+            $(function(){
+                var criteria = {"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":"PC","keyword":"","pageNum":0,"amount":amount};
+                loadList(criteria);
+            })
+
+            $('#searchText').on('keyup', function(){
+                $.ajax({
+                    type:'get',
+                    url:'/invapi/auto-search-statement',
+                    data:{"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$(this).val()},
+                    success: function(res){
+                        $('#statementAutoList').empty();
+                        res.slice(0,10).forEach(function(data) {
+                            let option = $('<option>');
+                            if($('#type').val() == 'IC'){
+                                option.val(data.item_code);
+                                option.text(data.item_name);
+                            }else if($('#type').val() == 'CN'){
+                                option.val(data.company_name);
+                                option.text(data.item_code);
+                            }else if($('#type').val() == 'IN'){
+                                option.val(data.item_name);
+                                option.text(data.proc_plan_number);
+                            }else if($('#type').val() == 'PC'){
+                                option.val(data.proc_plan_number);
+                                option.text(data.item_name);
+                            }
+                            $('#statementAutoList').append(option);
+                        });
+                    }
+                })
+            })
+
+            $('#dateSearchBtn').on("click",function(){
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount})
+            })
+
+            $('#searchBtn').on("click", function(e){
+                e.preventDefault();
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":0,"amount":amount})
+            })
+
+            $('.pagination').on("click","a", function(){
+                id = $(this).data("paging");
+                if(id == 'next'){
+                    id = parseInt(crntPage/10)+1;
+                    id = id*10+1;
+                }else if(id == 'prev'){
+                    id = parseInt(crntPage/10);
+                    id = id*10;
+                }
+                loadList({"startDate":$('#sDate').val(),"endDate":$('#eDate').val(),"type":$('#type').val(),"keyword":$('#searchText').val(),"pageNum":id-1,"amount":amount});
+            })
+
+            $('#printBtn').on("click",function(){
+                if(bsNumArr.length === 0){
+                    alert('선택된 품목이 없습니다.');
+                }else{
+                    let popOption = "width = 800px, height = 630px, top = 100px, left = 100px, scrollbars=yes";
+                    let popUrl = '/inv/statement-preview/'+prcNumberArr.join("','")+"/"+bsNumArr[0];
+                    console.log(prcNumberArr);
+                    window.open(popUrl,'pop',popOption);
+                }
+            })
+
+            // $('#poTbody').on("click","button",function(){
+            //     console.log("여기다 애송이",$(this));
+            //     if(!($(this).hasClass('disabled'))){
+            //         let popOption = "width = 1200px, height = 730px, top = 100px, left = 100px, scrollbars=yes";
+            //         let popUrl = '/inv/statement-preview/'+$(this).parent().siblings('.poNum').text();
+            //         console.log($(this).parent('.poNum').text());
+            //         window.open(popUrl,'pop',popOption);
+            //     }
+            // })
+            $('#label-selectAll').on("click",function(){
+                console.log("전체선택눌림");
+                if($(this).siblings('input').is(":checked") == true){
+                    $('.tbodyCheck').each(function(){
+                       $(this).prop("checked",false);
+                    }) 
+                    prcNumberArr = [];
+                    bsNumArr = [];
+                }else{
+                    if(compare_bs() == true){
+                        prcNumberArr = [];
+                        $('.tbodyCheck').each(function(){
+                           $(this).prop("checked",true);
+                           let prcNum = $(this).parent().parent().siblings('.prcNum').text();
+                           prcNumberArr.push(prcNum); 
+                        })
+                    }else{
+                        alert('명세서는 한 회사에 대해서만 발행할 수 있습니다.')
+                        checkedFalse();
+                    }
+                }
+            })
+            function checkedFalse(){
+                $('#selectAll').trigger("click");
+            }
+
+            function compare_bs(){
+                let flag = true;
+                let testBs = $('#0result').children('.bsTd').data('bsnum');
+                $('.bsTd').each(function(){
+                    let bs = $(this).data('bsnum');
+                    if(testBs != bs){
+                        console.log("???")
+                        flag = false;
+                        return false;
+                    }else{
+                        console.log(testBs,"이거랑 비교",bs);
+                    }
+                })
+                testBs = "";
+                return flag;
+            }
+
+            $('#poTbody').on("click","tr",function(){
+                let bs = $(this).children('.bsTd').data('bsnum');
+                if($(this).children().children().children('input').is(':checked') == true){
+                    $(this).children().children().children('input').prop('checked',false);
+                    $('#selectAll').prop("checked",false);
+                    let prcNum = $(this).children('.prcNum').text();
+                    prcNumberArr = prcNumberArr.filter(e => e != prcNum);
+              
+                    for(let i = 0; i < bsNumArr.length; i++){
+                        if(bsNumArr[i] == bs){
+                            bsNumArr.splice(i,1);
+                            console.log("빠져나가라 좀")
+                            break;
+                        }
+                    }
+                    console.log(bsNumArr);
+                }else{
+                    if((bsNumArr.includes(bs)) || bsNumArr.length === 0){
+                        $(this).children().children().children('input').prop('checked',true);
+                        let prcNum = $(this).children('.prcNum').text();
+                        prcNumberArr.push(prcNum);
+                        bsNumArr.push(bs);
+                        console.log(bsNumArr);
+                    }else{
+                        alert('명세서는 한 회사에 대해서만 발행할 수 있습니다.')
+                    }
+                    
+                }
+            })
+
+            function loadList(criteria){
+                $.ajax({
+                    type:"get",
+                    url:"/invapi/statement-get-data",
+                    data:criteria,
+                    success:function(res){
+                        console.log("성공, 데이터확인",res);
+                        $('#poTbody').empty();
+                        result = res.dataList;
+                        var rsStr = "";
+                        for(let i = 0; i < result.length; i++){
+                            rsStr += "<tr id ='"+i+"result'><td><div class='custom-control custom-checkbox'><input type='checkbox' id='"+i+"checkbox' class='custom-control-input tbodyCheck'> <label class='custom-control-label' for='"+i+"checkbox'></label></div></td><td class='prcNum'>"+result[i].proc_plan_number+"</td><td class='bsTd' data-bsNum='"+result[i].business_number+"'>"+result[i].company_name+"</td><td>"+result[i].item_code+"</td><td>"+result[i].item_name+"</td><td>"+dateFormatter(result[i].purch_order_date)+"</td><td>"+dateFormatter(result[i].receive_duedate)+"</td></tr>";
+                        }
+                        $('#poTbody').html(rsStr);
+                        $('th').addClass('text-center');
+                        $('td').addClass('text-center');
+                        console.log("전체페이지 수",res.page_count);
+                        var pageList = res.pageList;
+                        var pageStr ="";
+                        for(let j = 0; j < pageList.length; j++){
+                            pageStr +="<li class='page-item'>";
+                            if(pageList[j] == "prev"){
+                                pageStr += "<a class='page-link' data-paging='prev' aria-label='Previous'><span aria-hidden='true'>&laquo;</span><span class='sr-only'>Previous</span></a>";
+                            }else if(pageList[j]=="next"){
+                                pageStr += "<a class='page-link'  data-paging='next' aria-label='Next'><span aria-hidden='true'>&raquo;</span><span class='sr-only'>Next</span></a>";
+                            }else{
+                                pageStr += "<a class='page-link'  data-paging='"+pageList[j]+"'>"+pageList[j]+"</a>";
+                            }
+                            pageStr +="</li>"
+                        }
+                        $('#searchPageList').html(pageStr);
+                        $('[data-paging ='+res.currentPage+']').parent().addClass("active");
+                        crntPage = criteria.pageNum + 1;
+                       
+                        makeCenter();
+                    },
+                    error:function(a,b,c){
+                        console.log("에러");
+                        console.log("a",a);
+                        console.log("b",b);
+                        console.log("c",c);
+                    }
+                })
+            }
+
+            function dateFormatter(date){
+                if(date != null){
+                    var d = new Date(date);
+                    let month = d.getMonth()+1;
+                    let year = d.getFullYear();
+                    let day = d.getDate();
+                    return [year,month,day].join('-');
+                }else{
+                    return "-";
+                }
+            }
+
+            function makeCenter(){
+                $('th').addClass('text-center');
+                $('td').addClass('text-center');
+            }
+        </script>
+    </th:block>
+</th:block>
+</html>
